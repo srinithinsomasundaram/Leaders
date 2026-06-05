@@ -29,11 +29,11 @@ export default defineConfig({
     },
   },
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: process.env.PORT ? parseInt(process.env.PORT) : 8080,
   },
   preview: {
-    host: "::",
+    host: "0.0.0.0",
     port: process.env.PORT ? parseInt(process.env.PORT) : 8080,
     allowedHosts: ["leaders.yespstudio.com"],
   },
