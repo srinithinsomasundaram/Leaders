@@ -30,6 +30,10 @@ export default defineConfig({
   },
   server: {
     host: "::",
-    port: 8080,
+    port: process.env.PORT ? parseInt(process.env.PORT) : 8080,
+  },
+  preview: {
+    host: "::",
+    port: process.env.PORT ? parseInt(process.env.PORT) : 8080,
   },
 });
