@@ -28,7 +28,7 @@ export const Route = createFileRoute("/auth")({
     else if (mode === "forgot") title = "Forgot Password · Yesp Leaders";
     else if (mode === "reset") title = "Reset Password · Yesp Leaders";
 
-    const desc = "Join the Yesp Leaders community. Learn and share founding, development, AI, and startup knowledge in the open.";
+    const desc = "Join the Yesp Leaders community. Learn and share founding, development, creator, AI, and startup knowledge in the open.";
     return {
       meta: [
         { title },

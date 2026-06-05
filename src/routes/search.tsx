@@ -11,7 +11,7 @@ export const Route = createFileRoute("/search")({
   validateSearch: searchSchema,
   head: () => {
     const title = "Search · Yesp Leaders";
-    const desc = "Search startup insights, AI trends, and founding lessons shared by verified builders on Yesp Leaders.";
+    const desc = "Search startup insights, creator strategies, AI trends, and founding lessons shared by verified builders on Yesp Leaders.";
     return {
       meta: [
         { title },

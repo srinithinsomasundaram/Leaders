@@ -28,7 +28,7 @@ export const Route = createFileRoute("/c/$slug")({
   head: ({ loaderData }) => {
     if (!loaderData) return { meta: [] };
     const title = `${loaderData.name} · Yesp Leaders`;
-    const desc = `Top posts and lessons about ${loaderData.name} from founders and builders on Yesp Leaders.`;
+    const desc = `Top posts and lessons about ${loaderData.name} from founders, creators, and builders on Yesp Leaders.`;
     return {
       meta: [
         { title },

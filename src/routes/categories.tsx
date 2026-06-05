@@ -56,7 +56,7 @@ const defaultTheme = {
 export const Route = createFileRoute("/categories")({
   head: () => {
     const title = "Categories · Yesp Leaders";
-    const desc = "Discover topics, discussions, and startup insights shared by builders on Yesp Leaders.";
+    const desc = "Discover topics, discussions, and startup insights shared by builders and creators on Yesp Leaders.";
     return {
       meta: [
         { title },
@@ -111,7 +111,7 @@ function CategoriesPage() {
         </div>
         <h1 className="font-serif text-4xl sm:text-5xl font-bold mb-3 tracking-tight">Browse by topic</h1>
         <p className="text-base text-muted-foreground leading-relaxed">
-          Discover startup tutorials, engineering teardowns, and growth lessons shared by verified founders and AI builders.
+          Discover startup tutorials, creator strategies, engineering teardowns, and growth lessons shared by verified founders, creators, and AI builders.
         </p>
       </div>
       

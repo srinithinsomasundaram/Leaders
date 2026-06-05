@@ -67,10 +67,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Yesp Leaders — Public knowledge from founders, devs & builders" },
-      { name: "description", content: "A public-first community where founders, developers, and AI builders share knowledge. Every post is SEO and GEO optimized." },
+      { title: "Yesp Leaders — Public knowledge from founders, devs, creators & builders" },
+      { name: "description", content: "A public-first community where founders, developers, creators, and AI builders share knowledge. Every post is SEO and GEO optimized." },
       { property: "og:title", content: "Yesp Leaders" },
-      { property: "og:description", content: "A public-first community where founders, developers, and AI builders share knowledge." },
+      { property: "og:description", content: "A public-first community where founders, developers, creators, and AI builders share knowledge." },
       { property: "og:type", content: "website" },
       { property: "og:image", content: "/logo.svg" },
       { name: "twitter:card", content: "summary_large_image" },
