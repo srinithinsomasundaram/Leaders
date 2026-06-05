@@ -12,6 +12,44 @@ const searchSchema = z.object({
 
 const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)";
 
+async function fetchFeed(sort: "trending" | "latest") {
+  try {
+    const q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
+    const ordered = sort === "latest"
+      ? q.order("created_at", { ascending: false })
+      : q.order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
+    const { data, error } = await ordered;
+    if (error) {
+      console.error("[home] Failed to load feed:", error);
+      return [];
+    }
+    return data as unknown as PostCardData[];
+  } catch (error) {
+    console.error("[home] Feed request crashed:", error);
+    return [];
+  }
+}
+
+async function fetchCategories() {
+  try {
+    const { data, error } = await supabase
+      .from("categories_by_usage" as any)
+      .select("name, slug, post_count")
+      .order("post_count", { ascending: false })
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error("[home] Failed to load categories:", error);
+      return [];
+    }
+
+    return (data ?? []) as any[];
+  } catch (error) {
+    console.error("[home] Category request crashed:", error);
+    return [];
+  }
+}
+
 export const Route = createFileRoute("/")({
   validateSearch: searchSchema,
   loaderDeps: ({ search: { sort } }) => ({ sort }),
@@ -19,26 +57,11 @@ export const Route = createFileRoute("/")({
     await Promise.all([
       queryClient.ensureQueryData({
         queryKey: ["posts", "feed", sort],
-        queryFn: async () => {
-          const q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
-          const ordered = sort === "latest"
-            ? q.order("created_at", { ascending: false })
-            : q.order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
-          const { data, error } = await ordered;
-          if (error) throw error;
-          return data as unknown as PostCardData[];
-        },
+        queryFn: () => fetchFeed(sort),
       }),
       queryClient.ensureQueryData({
         queryKey: ["categories"],
-        queryFn: async () => {
-          const { data } = await supabase
-            .from("categories_by_usage" as any)
-            .select("name, slug, post_count")
-            .order("post_count", { ascending: false })
-            .order("name", { ascending: true });
-          return (data ?? []) as any[];
-        },
+        queryFn: fetchCategories,
       }),
     ]);
   },
@@ -73,27 +96,12 @@ function HomePage() {
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ["posts", "feed", sort],
-    queryFn: async () => {
-      const q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
-      const ordered = sort === "latest"
-        ? q.order("created_at", { ascending: false })
-        : q.order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
-      const { data, error } = await ordered;
-      if (error) throw error;
-      return data as unknown as PostCardData[];
-    },
+    queryFn: () => fetchFeed(sort),
   });
 
   const { data: cats } = useQuery({
     queryKey: ["categories"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("categories_by_usage" as any)
-        .select("name, slug, post_count")
-        .order("post_count", { ascending: false })
-        .order("name", { ascending: true });
-      return (data ?? []) as any[];
-    },
+    queryFn: fetchCategories,
   });
 
   return (
