@@ -35,3 +35,12 @@ CREATE POLICY "Users can update own notifications"
 CREATE POLICY "Service can insert notifications"
   ON public.notifications FOR INSERT
   WITH CHECK (TRUE);
+
+-- Enable Realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+
+-- Grant access
+GRANT SELECT, INSERT, UPDATE ON public.notifications TO authenticated;
+GRANT SELECT ON public.notifications TO anon;
+GRANT ALL ON public.notifications TO service_role;
+

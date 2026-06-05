@@ -1,4 +1,4 @@
-// Server-only helper that calls Lovable AI Gateway to generate SEO + GEO metadata.
+// Server-only helper that calls standard AI APIs (OpenAI or Gemini) to generate SEO + GEO metadata.
 
 export type AiSeoResult = {
   seo_title: string;
@@ -14,9 +14,11 @@ export type AiSeoResult = {
 };
 
 export async function generateAiSeo(title: string, content: string): Promise<AiSeoResult | null> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) {
-    console.error("[ai-seo] Missing LOVABLE_API_KEY");
+  const openAiKey = process.env.OPENAI_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+
+  if (!openAiKey && !geminiKey) {
+    console.warn("[ai-seo] Missing OPENAI_API_KEY or GEMINI_API_KEY. Skipping AI metadata generation.");
     return null;
   }
 
@@ -34,24 +36,53 @@ ${content.slice(0, 6000)}
 Return ONLY JSON. No markdown.`;
 
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-      }),
-    });
+    let res: Response;
+    if (geminiKey) {
+      // Use official Google Gemini API endpoint
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          }),
+        }
+      );
+    } else {
+      // Use official OpenAI API endpoint
+      res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openAiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+        }),
+      });
+    }
+
     if (!res.ok) {
-      console.error("[ai-seo] gateway error", res.status, await res.text());
+      console.error("[ai-seo] API error", res.status, await res.text());
       return null;
     }
+
     const json = await res.json();
-    const text = json.choices?.[0]?.message?.content;
+    let text = "";
+    if (geminiKey) {
+      text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    } else {
+      text = json.choices?.[0]?.message?.content;
+    }
+
     if (!text) return null;
     const parsed = JSON.parse(text);
     return {
