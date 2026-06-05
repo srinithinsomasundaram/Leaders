@@ -1,0 +1,33 @@
+<svg width="100%" viewBox="0 0 680 360" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>YESP Leaders creative logo</title>
+  <desc>Creative premium logo for YESP Leaders with a clean rock peak icon and bold modern typography</desc>
+
+  <defs>
+    <clipPath id="sq">
+      <rect x="270" y="30" width="140" height="140" rx="28"/>
+    </clipPath>
+  </defs>
+
+  <!-- Icon background -->
+  <rect x="270" y="30" width="140" height="140" rx="28" fill="#111111" />
+
+  <!-- Main rock peak -->
+  <polygon points="340,58 292,154 388,154" fill="#ffffff" clip-path="url(#sq)" />
+
+  <!-- Hollow cutout -->
+  <polygon points="340,80 312,154 368,154" fill="#111111" clip-path="url(#sq)" />
+
+  <!-- Wordmark -->
+  <text x="340" y="238" font-family="Arial Black, Arial, sans-serif" font-size="46" font-weight="900" fill="#111111" text-anchor="middle" letter-spacing="4">YESP</text>
+
+  <!-- Dot · LEADERS · Dot -->
+  <circle cx="284" cy="262" r="3.5" fill="#111111" opacity="0.4" />
+  <text x="340" y="270" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#111111" text-anchor="middle" letter-spacing="7">LEADERS</text>
+  <circle cx="396" cy="262" r="3.5" fill="#111111" opacity="0.4" />
+
+  <!-- Subtle rule -->
+  <rect x="220" y="283" width="240" height="1" fill="#111111" opacity="0.1" />
+
+  <!-- Community tagline -->
+  <text x="340" y="308" font-family="Arial, sans-serif" font-size="11" font-weight="400" fill="#888888" text-anchor="middle" letter-spacing="3">COMMUNITY PLATFORM</text>
+</svg>
