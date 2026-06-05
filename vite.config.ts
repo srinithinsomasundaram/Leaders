@@ -35,5 +35,6 @@ export default defineConfig({
   preview: {
     host: "::",
     port: process.env.PORT ? parseInt(process.env.PORT) : 8080,
+    allowedHosts: ["leaders.yespstudio.com"],
   },
 });
