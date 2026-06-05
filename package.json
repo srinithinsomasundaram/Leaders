@@ -7,8 +7,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "preview": "vite preview --host 0.0.0.0",
-    "start": "vite preview --host 0.0.0.0",
+    "preview": "vite preview --host 0.0.0.0 --strictPort",
+    "start": "vite preview --host 0.0.0.0 --strictPort",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
