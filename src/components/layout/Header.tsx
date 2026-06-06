@@ -125,9 +125,7 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1 text-sm">
-          <NavLink to="/">Home</NavLink>
-          <NavLink to="/" search={{ sort: "trending" }}>Trending</NavLink>
-          <NavLink to="/" search={{ sort: "latest" }}>Latest</NavLink>
+          <NavLink to="/">Explore</NavLink>
           <NavLink to="/categories">Categories</NavLink>
           {isAdmin && <NavLink to="/admin/verifications">Verifications</NavLink>}
         </nav>
