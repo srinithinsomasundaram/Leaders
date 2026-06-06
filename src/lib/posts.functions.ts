@@ -76,6 +76,7 @@ const UpdateProfileInput = z.object({
   username: z.string().trim().min(3).max(30).regex(/^[a-z0-9_]+$/, "lowercase letters, numbers, underscore"),
   profession: z.string().trim().max(80).optional().nullable(),
   avatar_url: z.string().url().optional().nullable().or(z.literal("")),
+  account_type: z.enum(["public", "private"]).optional(),
 });
 
 export const updateMyProfile = createServerFn({ method: "POST" })
@@ -84,14 +85,18 @@ export const updateMyProfile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as any;
     const userId = context.userId;
+    const updateData: any = {
+      name: data.name,
+      username: data.username,
+      profession: data.profession || null,
+      avatar_url: data.avatar_url || null,
+    };
+    if (data.account_type) {
+      updateData.account_type = data.account_type;
+    }
     const { error } = await supabase
       .from("profiles")
-      .update({
-        name: data.name,
-        username: data.username,
-        profession: data.profession || null,
-        avatar_url: data.avatar_url || null,
-      })
+      .update(updateData)
       .eq("id", userId);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -418,9 +423,187 @@ export const reviewVerification = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ─── Connections ───────────────────────────────────────────────
+
+const SendConnectionRequestInput = z.object({
+  receiver_id: z.string().uuid(),
+});
+
+export const sendConnectionRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => SendConnectionRequestInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as any;
+    const userId = context.userId;
+
+    if (userId === data.receiver_id) {
+      throw new Error("Cannot connect with yourself");
+    }
+
+    // Check if receiver's account is public
+    const { data: receiverProfile } = await supabase
+      .from("profiles")
+      .select("account_type, name, username")
+      .eq("id", data.receiver_id)
+      .single();
+
+    if (!receiverProfile) throw new Error("User not found");
+
+    // Check for existing connection/request
+    const { data: existing } = await supabase
+      .from("connections")
+      .select("id, status")
+      .or(`and(requester_id.eq.${userId},receiver_id.eq.${data.receiver_id}),and(requester_id.eq.${data.receiver_id},receiver_id.eq.${userId})`)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === "accepted") {
+        throw new Error("Already connected");
+      } else if (existing.status === "pending") {
+        throw new Error("Connection request already sent");
+      }
+    }
+
+    // For public accounts, auto-accept. For private, create pending request
+    const status = receiverProfile.account_type === "public" ? "accepted" : "pending";
+
+    const { error } = await supabase.from("connections").insert({
+      requester_id: userId,
+      receiver_id: data.receiver_id,
+      status,
+    });
+
+    if (error) throw new Error(error.message);
+
+    // Send notification
+    (async () => {
+      try {
+        const { data: requesterProfile } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (status === "accepted") {
+          await createNotification(supabase, {
+            user_id: data.receiver_id,
+            type: "connection_accepted",
+            title: `${requesterProfile?.name || "Someone"} connected with you`,
+            body: "You are now connected",
+            link: `/leader/${receiverProfile.username}`,
+            actor_id: userId,
+          });
+        } else {
+          await createNotification(supabase, {
+            user_id: data.receiver_id,
+            type: "connection_request",
+            title: `${requesterProfile?.name || "Someone"} sent you a connection request`,
+            body: "Review their profile and accept or reject",
+            link: `/leader/${receiverProfile.username}`,
+            actor_id: userId,
+          });
+        }
+      } catch (err) {
+        console.error("[sendConnectionRequest notification error]", err);
+      }
+    })();
+
+    return { ok: true, status };
+  });
+
+const RespondToConnectionInput = z.object({
+  connection_id: z.string().uuid(),
+  action: z.enum(["accept", "reject"]),
+});
+
+export const respondToConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => RespondToConnectionInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as any;
+    const userId = context.userId;
+
+    // Verify this user is the receiver
+    const { data: connection } = await supabase
+      .from("connections")
+      .select("requester_id, receiver_id, status")
+      .eq("id", data.connection_id)
+      .eq("receiver_id", userId)
+      .single();
+
+    if (!connection) throw new Error("Connection request not found");
+    if (connection.status !== "pending") throw new Error("Connection request already processed");
+
+    const newStatus = data.action === "accept" ? "accepted" : "rejected";
+
+    const { error } = await supabase
+      .from("connections")
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", data.connection_id);
+
+    if (error) throw new Error(error.message);
+
+    // Send notification to requester
+    if (data.action === "accept") {
+      (async () => {
+        try {
+          const { data: receiverProfile } = await supabase
+            .from("profiles")
+            .select("name, username")
+            .eq("id", userId)
+            .maybeSingle();
+
+          await createNotification(supabase, {
+            user_id: connection.requester_id,
+            type: "connection_accepted",
+            title: `${receiverProfile?.name || "Someone"} accepted your connection request`,
+            body: "You are now connected",
+            link: `/leader/${receiverProfile?.username}`,
+            actor_id: userId,
+          });
+        } catch (err) {
+          console.error("[respondToConnection notification error]", err);
+        }
+      })();
+    }
+
+    return { ok: true, status: newStatus };
+  });
+
+const RemoveConnectionInput = z.object({
+  connection_id: z.string().uuid(),
+});
+
+export const removeConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => RemoveConnectionInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as any;
+    const userId = context.userId;
+
+    // Verify user is part of this connection
+    const { data: connection } = await supabase
+      .from("connections")
+      .select("id")
+      .eq("id", data.connection_id)
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+      .maybeSingle();
+
+    if (!connection) throw new Error("Connection not found");
+
+    const { error } = await supabase
+      .from("connections")
+      .delete()
+      .eq("id", data.connection_id);
+
+    if (error) throw new Error(error.message);
+
+    return { ok: true };
+  });
+
 async function createNotification(supabaseClient: any, params: {
   user_id: string;
-  type: "upvote" | "comment" | "mention" | "verification_approved" | "verification_rejected";
+  type: "upvote" | "comment" | "mention" | "verification_approved" | "verification_rejected" | "connection_request" | "connection_accepted";
   title: string;
   body?: string | null;
   link?: string | null;

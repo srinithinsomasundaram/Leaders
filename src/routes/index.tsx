@@ -4,18 +4,40 @@ import { z } from "zod";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
-import { Flame, Clock } from "lucide-react";
+import { Flame, Clock, Users } from "lucide-react";
 import { getItemListSchema } from "@/lib/seo";
+import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({
-  sort: z.enum(["trending", "latest"]).optional(),
+  sort: z.enum(["trending", "latest", "connected"]).optional(),
 });
 
 const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)";
 
-async function fetchFeed(sort: "trending" | "latest") {
+async function fetchFeed(sort: "trending" | "latest" | "connected", userId?: string) {
   try {
-    const q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
+    let q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
+
+    // For "connected" feed, filter by user's connections
+    if (sort === "connected" && userId) {
+      // Get user's connections
+      const { data: connections } = await supabase
+        .from("connections")
+        .select("requester_id, receiver_id")
+        .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+        .eq("status", "accepted");
+
+      if (connections && connections.length > 0) {
+        const connectedUserIds = connections.map((c: any) =>
+          c.requester_id === userId ? c.receiver_id : c.requester_id
+        );
+        q = q.in("user_id", connectedUserIds);
+      } else {
+        // No connections, return empty
+        return [];
+      }
+    }
+
     const ordered = sort === "latest"
       ? q.order("created_at", { ascending: false })
       : q.order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
@@ -54,11 +76,15 @@ async function fetchCategories() {
 export const Route = createFileRoute("/")({
   validateSearch: searchSchema,
   loaderDeps: ({ search: { sort } }) => ({ sort }),
-  loader: async ({ context: { queryClient }, deps: { sort = "trending" } }) => {
+  loader: async ({ context: { queryClient, supabase }, deps: { sort = "trending" } }) => {
+    // Get current user ID for connected feed
+    const { data: { user } } = await (supabase as any).auth.getUser();
+    const userId = user?.id;
+
     await Promise.all([
       queryClient.ensureQueryData({
-        queryKey: ["posts", "feed", sort],
-        queryFn: () => fetchFeed(sort),
+        queryKey: ["posts", "feed", sort, userId],
+        queryFn: () => fetchFeed(sort, userId),
       }),
       queryClient.ensureQueryData({
         queryKey: ["categories"],
@@ -94,10 +120,11 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const { sort = "trending" } = Route.useSearch();
+  const { user } = useAuth();
 
   const { data: posts, isLoading } = useQuery({
-    queryKey: ["posts", "feed", sort],
-    queryFn: () => fetchFeed(sort),
+    queryKey: ["posts", "feed", sort, user?.id],
+    queryFn: () => fetchFeed(sort, user?.id),
   });
 
   const { data: cats } = useQuery({
@@ -145,13 +172,18 @@ function HomePage() {
       </div>
 
       <div>
-        <div className="flex items-center gap-1 mb-2 text-sm">
+        <div className="flex items-center gap-1 mb-2 text-sm flex-wrap">
           <SortLink to="/" search={{ sort: "trending" }} active={sort === "trending"} icon={<Flame className="w-3.5 h-3.5" />}>
             Trending
           </SortLink>
           <SortLink to="/" search={{ sort: "latest" }} active={sort === "latest"} icon={<Clock className="w-3.5 h-3.5" />}>
             Latest
           </SortLink>
+          {user && (
+            <SortLink to="/" search={{ sort: "connected" }} active={sort === "connected"} icon={<Users className="w-3.5 h-3.5" />}>
+              Connected
+            </SortLink>
+          )}
         </div>
 
         {isLoading && (
