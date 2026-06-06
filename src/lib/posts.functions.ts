@@ -48,25 +48,66 @@ export const createPost = createServerFn({ method: "POST" })
 
     if (error || !post) throw new Error(error?.message || "Failed to create post");
 
-    // Fire-and-forget AI SEO generation (don't block the response).
+    // Fire-and-forget AI SEO generation and YLS analysis (don't block the response).
     const { generateAiSeo } = await import("@/lib/ai-seo.server");
+    const { analyzeBusinessRelevance, detectSpamPatterns } = await import("@/lib/yls-ranking.server");
     const { supabaseAdmin: supabaseAdminClient } = await import("@/integrations/supabase/client.server");
     const supabaseAdmin = supabaseAdminClient as any;
-    generateAiSeo(data.title, data.content)
-      .then(async (seo) => {
-        if (!seo) return;
+
+    // Run SEO and YLS analysis in parallel
+    Promise.all([
+      generateAiSeo(data.title, data.content),
+      analyzeBusinessRelevance(data.title, data.content),
+    ])
+      .then(async ([seo, ylsAnalysis]) => {
+        const spamScore = detectSpamPatterns(data.title, data.content);
+
+        const updateData: any = {};
+
+        // Add SEO data
+        if (seo) {
+          updateData.seo_title = seo.seo_title;
+          updateData.seo_description = seo.seo_description;
+          updateData.ai_summary = seo.ai_summary;
+          updateData.ai_keywords = seo.ai_keywords;
+          updateData.ai_insights = seo.ai_insights;
+        }
+
+        // Add YLS data
+        updateData.business_relevance_score = ylsAnalysis.business_relevance_score;
+        updateData.is_opportunity = ylsAnalysis.is_opportunity;
+        updateData.opportunity_type = ylsAnalysis.opportunity_type;
+        updateData.ai_detected_topics = ylsAnalysis.detected_topics;
+        updateData.spam_score = spamScore;
+        updateData.completion_rate = ylsAnalysis.completion_rate;
+
         await supabaseAdmin
           .from("posts")
-          .update({
-            seo_title: seo.seo_title,
-            seo_description: seo.seo_description,
-            ai_summary: seo.ai_summary,
-            ai_keywords: seo.ai_keywords,
-            ai_insights: seo.ai_insights,
-          })
+          .update(updateData)
           .eq("id", post.id);
+
+        // Calculate initial YLS score
+        await supabaseAdmin.rpc("calculate_yls_score", { post_id: post.id });
+
+        // Update author's trust score and profile completion
+        await supabaseAdmin.rpc("update_user_trust_score", { user_id: userId });
+        await supabaseAdmin.rpc("calculate_profile_completion", { user_id: userId });
+
+        // Increment founder posts count if applicable
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("is_new_founder, founder_posts_count")
+          .eq("id", userId)
+          .single();
+
+        if (profile?.is_new_founder) {
+          await supabaseAdmin
+            .from("profiles")
+            .update({ founder_posts_count: (profile.founder_posts_count || 0) + 1 })
+            .eq("id", userId);
+        }
       })
-      .catch((e) => console.error("[ai-seo bg]", e));
+      .catch((e) => console.error("[ai-seo and yls bg]", e));
 
     return { slug: post.slug };
   });
@@ -167,13 +208,38 @@ export const addComment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as any;
     const userId = context.userId;
-    const { error } = await supabase.from("comments").insert({
+    const { data: comment, error } = await supabase.from("comments").insert({
       post_id: data.post_id,
       user_id: userId,
       parent_id: data.parent_id || null,
       content: data.content,
-    });
+    }).select("id").single();
     if (error) throw new Error(error.message);
+
+    // Analyze comment quality in background
+    (async () => {
+      try {
+        const { analyzeCommentQuality } = await import("@/lib/yls-ranking.server");
+        const { supabaseAdmin: supabaseAdminClient } = await import("@/integrations/supabase/client.server");
+        const supabaseAdmin = supabaseAdminClient as any;
+
+        const quality = await analyzeCommentQuality(data.content);
+
+        await supabaseAdmin.from("comment_quality").insert({
+          comment_id: comment.id,
+          quality_score: quality.quality_score,
+          is_high_value: quality.is_high_value,
+          word_count: data.content.trim().split(/\s+/).length,
+          has_question: quality.has_question,
+          has_experience: quality.has_experience,
+        });
+
+        // Recalculate YLS score for the post
+        await supabaseAdmin.rpc("calculate_yls_score", { post_id: data.post_id });
+      } catch (err) {
+        console.error("[comment quality analysis error]", err);
+      }
+    })();
 
     // Trigger notification in background
     (async () => {

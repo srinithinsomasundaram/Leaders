@@ -4,17 +4,17 @@ import { z } from "zod";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
-import { Flame, Clock, Users } from "lucide-react";
+import { Flame, Clock, Users, Briefcase } from "lucide-react";
 import { getItemListSchema } from "@/lib/seo";
 import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({
-  sort: z.enum(["trending", "latest", "connected"]).optional(),
+  sort: z.enum(["trending", "latest", "connected", "opportunities"]).optional(),
 });
 
 const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)";
 
-async function fetchFeed(sort: "trending" | "latest" | "connected", userId?: string) {
+async function fetchFeed(sort: "trending" | "latest" | "connected" | "opportunities", userId?: string) {
   try {
     let q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
 
@@ -38,9 +38,19 @@ async function fetchFeed(sort: "trending" | "latest" | "connected", userId?: str
       }
     }
 
-    const ordered = sort === "latest"
-      ? q.order("created_at", { ascending: false })
-      : q.order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
+    // For "opportunities" feed, filter by is_opportunity
+    if (sort === "opportunities") {
+      q = q.eq("is_opportunity", true);
+    }
+
+    // Order by YLS score for trending, or created_at for latest
+    const ordered =
+      sort === "latest" || sort === "connected"
+        ? q.order("created_at", { ascending: false })
+        : sort === "opportunities"
+        ? q.order("yls_score", { ascending: false }).order("created_at", { ascending: false })
+        : q.order("yls_score", { ascending: false }).order("created_at", { ascending: false });
+
     const { data, error } = await ordered;
     if (error) {
       console.error("[home] Failed to load feed:", error);
@@ -173,6 +183,9 @@ function HomePage() {
 
       <div>
         <div className="flex items-center gap-1 mb-2 text-sm flex-wrap">
+          <SortLink to="/" search={{ sort: "opportunities" }} active={sort === "opportunities"} icon={<Briefcase className="w-3.5 h-3.5" />}>
+            Opportunities
+          </SortLink>
           <SortLink to="/" search={{ sort: "trending" }} active={sort === "trending"} icon={<Flame className="w-3.5 h-3.5" />}>
             Trending
           </SortLink>
