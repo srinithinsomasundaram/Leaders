@@ -5,9 +5,21 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(({ mode }) => {
-  Object.assign(process.env, loadEnv(mode, process.cwd(), ""));
+  const env = loadEnv(mode, process.cwd(), "");
+  Object.assign(process.env, env);
 
   return {
+    define: {
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
+        env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
+      ),
+      'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(
+        env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || ''
+      ),
+      'import.meta.env.VITE_SUPABASE_PROJECT_ID': JSON.stringify(
+        env.VITE_SUPABASE_PROJECT_ID || process.env.VITE_SUPABASE_PROJECT_ID || ''
+      ),
+    },
     plugins: [
       tsconfigPaths({ projects: ["./tsconfig.json"] }),
       tailwindcss(),
