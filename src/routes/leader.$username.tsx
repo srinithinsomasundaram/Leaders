@@ -23,12 +23,26 @@ import { UserPlus, UserMinus, UserCheck, Lock, Globe } from "lucide-react";
 
 export const Route = createFileRoute("/leader/$username")({
   loader: async ({ context: { queryClient }, params }) => {
-    const { data } = await supabase
+    console.log("[Profile Loader] Searching for username:", params.username);
+    const { data, error } = await supabase
       .from("profiles")
       .select("id, username, name, profession, avatar_url, created_at, username_last_updated_at, is_verified, verification_requested_at, account_type")
       .eq("username", params.username)
       .maybeSingle();
-    if (!data) throw notFound();
+
+    console.log("[Profile Loader] Query result:", { data, error });
+
+    if (error) {
+      console.error("[Profile Loader] Database error:", error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    if (!data) {
+      console.warn("[Profile Loader] No profile found for username:", params.username);
+      throw notFound();
+    }
+
+    console.log("[Profile Loader] Profile found:", data.username);
 
     // Prefetch leader posts in loader
     await queryClient.ensureQueryData({
