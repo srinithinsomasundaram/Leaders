@@ -585,6 +585,121 @@ export async function sendAIMatches(
 }
 
 /**
+ * 9. Welcome Email (for all users)
+ */
+export async function sendWelcomeEmail(recipient: EmailRecipient) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Yesp Leaders Community</title>
+</head>
+<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; border-radius: 12px 12px 0 0; text-align: center;">
+    <div style="font-size: 64px; margin-bottom: 15px;">🚀</div>
+    <h1 style="margin: 0; font-size: 32px;">Welcome to Yesp Leaders!</h1>
+    <p style="margin: 15px 0 0 0; opacity: 0.95; font-size: 18px;">Where business leaders connect and grow</p>
+  </div>
+
+  <div style="background: white; padding: 40px; border-radius: 0 0 12px 12px;">
+    <p style="margin: 0 0 20px 0; font-size: 18px; color: #111827; font-weight: 600;">
+      Hi ${recipient.name},
+    </p>
+
+    <p style="margin: 0 0 20px 0; font-size: 16px; color: #374151; line-height: 1.8;">
+      We're thrilled to have you join the Yesp Leaders community! This is where founders, executives, and business professionals come together to share insights, discover opportunities, and build meaningful connections.
+    </p>
+
+    <div style="background: #f3f4f6; padding: 25px; border-radius: 8px; margin: 30px 0;">
+      <h2 style="margin: 0 0 20px 0; font-size: 20px; color: #111827;">🎯 What You Can Do on Yesp Leaders</h2>
+
+      <div style="margin: 15px 0;">
+        <div style="display: flex; align-items: start; margin-bottom: 15px;">
+          <span style="font-size: 24px; margin-right: 12px;">📝</span>
+          <div>
+            <strong style="color: #111827;">Share Your Expertise</strong>
+            <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Create posts about your business insights, startup journey, and professional experiences</p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: start; margin-bottom: 15px;">
+          <span style="font-size: 24px; margin-right: 12px;">🤝</span>
+          <div>
+            <strong style="color: #111827;">Connect with Leaders</strong>
+            <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Build your network with founders, investors, and professionals in your industry</p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: start; margin-bottom: 15px;">
+          <span style="font-size: 24px; margin-right: 12px;">🔥</span>
+          <div>
+            <strong style="color: #111827;">Discover Opportunities</strong>
+            <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Find hiring, partnerships, investments, and collaboration opportunities</p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: start;">
+          <span style="font-size: 24px; margin-right: 12px;">🏆</span>
+          <div>
+            <strong style="color: #111827;">Get Verified</strong>
+            <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Earn Creator, Leader, or Elite badges by contributing quality content and building your reputation</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 25px; border-radius: 8px; margin: 30px 0; text-align: center;">
+      <h3 style="margin: 0 0 15px 0; font-size: 18px; color: white;">🎁 Start Strong</h3>
+      <p style="margin: 0 0 20px 0; color: white; opacity: 0.95; font-size: 14px;">
+        Create your first post to earn the Creator badge! Share your expertise, ask questions, or introduce yourself to the community.
+      </p>
+      <a href="${BASE_URL}/create"
+         style="display: inline-block; background: white; color: #059669; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px;">
+        Create Your First Post
+      </a>
+    </div>
+
+    <div style="margin-top: 30px; text-align: center;">
+      <a href="${BASE_URL}"
+         style="display: inline-block; background: #667eea; color: white; padding: 14px 35px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 5px;">
+        Explore the Community
+      </a>
+      <a href="${BASE_URL}/leader/${recipient.username}"
+         style="display: inline-block; background: #111827; color: white; padding: 14px 35px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 5px;">
+        Complete Your Profile
+      </a>
+    </div>
+
+    <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #f3f4f6;">
+      <p style="margin: 0 0 15px 0; font-size: 16px; color: #374151; line-height: 1.8;">
+        We're building something special here - a community where business relationships turn into real opportunities. We can't wait to see what you'll contribute!
+      </p>
+      <p style="margin: 0; font-size: 16px; color: #374151;">
+        Welcome aboard,<br>
+        <strong style="color: #667eea;">The Yesp Leaders Team</strong>
+      </p>
+    </div>
+
+    <p style="margin-top: 30px; font-size: 12px; color: #9ca3af; text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+      You're receiving this as a member of Yesp Leaders.<br>
+      Questions? Reply to this email or visit our <a href="${BASE_URL}" style="color: #667eea;">community</a>.
+    </p>
+  </div>
+</body>
+</html>
+  `;
+
+  return await resend.emails.send({
+    from: FROM_EMAIL,
+    to: recipient.email,
+    subject: "🚀 Welcome to Yesp Leaders Community!",
+    html,
+  });
+}
+
+/**
  * Track email engagement
  */
 export async function trackEmailEngagement(
