@@ -20,6 +20,7 @@ import { MentionTextarea } from "@/components/MentionTextarea";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { SharePostDialog } from "@/components/SharePostDialog";
 import { playUpvoteSound } from "@/lib/audio";
+import { getArticleSchema, getBreadcrumbSchema, combineSchemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/post/$slug")({
   loader: async ({ params }) => {
@@ -262,17 +263,38 @@ function PostPage() {
     }
   }
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: post.title,
+  // Enhanced structured data with Article, Breadcrumb, and more
+  const articleSchema = getArticleSchema({
+    slug: post.slug,
+    title: post.title,
+    description: post.seo_description || post.ai_summary,
+    content: post.content,
+    authorName: post.profiles?.name || "Unknown",
+    authorUsername: post.profiles?.username || "unknown",
     datePublished: post.created_at,
-    author: { "@type": "Person", name: post.profiles?.name },
-    articleSection: post.categories?.name,
-    keywords: (post.ai_keywords as string[] | null)?.join(", ") || post.tags.join(", "),
-    description: post.seo_description || post.ai_summary || undefined,
-    image: post.image_urls?.[0],
-  };
+    imageUrl: post.image_urls?.[0],
+    keywords: [...(post.ai_keywords || []), ...(post.tags || [])],
+    categoryName: post.categories?.name,
+    upvoteCount: post.upvote_count,
+    commentCount: post.comment_count,
+  });
+
+  const breadcrumbItems = [
+    { name: "Home", url: "https://yespleaders.com/" },
+  ];
+  if (post.categories) {
+    breadcrumbItems.push({
+      name: post.categories.name,
+      url: `https://yespleaders.com/c/${post.categories.slug}`,
+    });
+  }
+  breadcrumbItems.push({
+    name: post.title,
+    url: `https://yespleaders.com/post/${post.slug}`,
+  });
+
+  const breadcrumbSchema = getBreadcrumbSchema(breadcrumbItems);
+  const jsonLd = combineSchemas(articleSchema, breadcrumbSchema);
 
   return (
     <div className="container-narrow py-8">

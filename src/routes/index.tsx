@@ -5,6 +5,7 @@ import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
 import { Flame, Clock } from "lucide-react";
+import { getItemListSchema } from "@/lib/seo";
 
 const searchSchema = z.object({
   sort: z.enum(["trending", "latest"]).optional(),
@@ -104,8 +105,23 @@ function HomePage() {
     queryFn: fetchCategories,
   });
 
+  // Enhanced structured data for homepage feed
+  const itemListSchema = posts && posts.length > 0 ? getItemListSchema({
+    name: sort === "trending" ? "Trending Posts" : "Latest Posts",
+    url: "https://yespleaders.com/",
+    description: `${sort === "trending" ? "Trending" : "Latest"} posts from founders, developers, creators, and builders`,
+    items: posts.slice(0, 10).map((post, index) => ({
+      url: `https://yespleaders.com/post/${post.slug}`,
+      name: post.title,
+      position: index + 1,
+    })),
+  }) : null;
+
   return (
     <div className="container-narrow py-6">
+      {itemListSchema && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }} />
+      )}
       {/* Categories scroll */}
       <div className="-mx-4 px-4 mb-4 overflow-x-auto">
         <div className="flex gap-2 min-w-max">

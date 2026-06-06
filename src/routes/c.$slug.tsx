@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
+import { getCollectionPageSchema, getBreadcrumbSchema, combineSchemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/c/$slug")({
   loader: async ({ context: { queryClient }, params }) => {
@@ -74,8 +75,26 @@ function CategoryPage() {
     },
   });
 
+  // Enhanced structured data for category page
+  const collectionSchema = getCollectionPageSchema({
+    slug: cat.slug,
+    name: cat.name,
+    description: `Top posts and lessons about ${cat.name} from founders, creators, and builders on Yesp Leaders.`,
+    postCount: posts?.length || 0,
+  });
+
+  const breadcrumbItems = [
+    { name: "Home", url: "https://yespleaders.com/" },
+    { name: "Categories", url: "https://yespleaders.com/categories" },
+    { name: cat.name, url: `https://yespleaders.com/c/${cat.slug}` },
+  ];
+
+  const breadcrumbSchema = getBreadcrumbSchema(breadcrumbItems);
+  const jsonLd = combineSchemas(collectionSchema, breadcrumbSchema);
+
   return (
     <div className="container-narrow py-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <h1 className="font-serif text-3xl font-bold">{cat.name}</h1>
       <p className="text-sm text-muted-foreground mb-6">Top posts in this topic</p>
       {posts?.map((p, i) => <PostCard key={p.id} post={p} rank={i + 1} />)}

@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { getPersonSchema, getBreadcrumbSchema, combineSchemas } from "@/lib/seo";
 
 export const Route = createFileRoute("/leader/$username")({
   loader: async ({ context: { queryClient }, params }) => {
@@ -237,18 +238,24 @@ function ProfilePage() {
     }
   }
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ProfilePage",
-    "mainEntity": {
-      "@type": "Person",
-      "name": profile.name,
-      "alternateName": profile.username,
-      "jobTitle": profile.profession || undefined,
-      "image": profile.avatar_url || undefined,
-      "url": `https://yespleaders.com/leader/${profile.username}`
-    }
-  };
+  // Enhanced structured data for profile
+  const personSchema = getPersonSchema({
+    username: profile.username,
+    name: profile.name,
+    profession: profile.profession,
+    avatarUrl: profile.avatar_url,
+    bio: profile.profession ? `${profile.name}, ${profile.profession}` : profile.name,
+    dateJoined: profile.created_at,
+  });
+
+  const breadcrumbItems = [
+    { name: "Home", url: "https://yespleaders.com/" },
+    { name: "Leaders", url: "https://yespleaders.com/" },
+    { name: profile.name, url: `https://yespleaders.com/leader/${profile.username}` },
+  ];
+
+  const breadcrumbSchema = getBreadcrumbSchema(breadcrumbItems);
+  const jsonLd = combineSchemas(personSchema, breadcrumbSchema);
 
   return (
     <div className="container-narrow py-10">

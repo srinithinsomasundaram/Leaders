@@ -17,6 +17,7 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { registerServiceWorker } from "@/lib/serviceWorker";
+import { getOrganizationSchema, getWebSiteSchema, combineSchemas } from "@/lib/seo";
 
 function NotFoundComponent() {
   return (
@@ -114,9 +115,19 @@ function RootComponent() {
     }
   }, []);
 
+  // Global structured data for Organization and WebSite
+  const globalSchema = combineSchemas(
+    getOrganizationSchema(),
+    getWebSiteSchema()
+  );
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(globalSchema) }}
+        />
         <LoadingScreen />
         <div className="min-h-screen flex flex-col">
           <Header />
