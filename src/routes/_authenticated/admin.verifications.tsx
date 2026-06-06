@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -123,14 +123,23 @@ function AdminVerificationsPage() {
 
   return (
     <div className="container-narrow py-8">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-primary/10 rounded-lg text-primary">
-          <ShieldCheck className="w-6 h-6" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">Verification Requests</h1>
+            <p className="text-sm text-muted-foreground mt-1">Review profiles requesting a golden verification tick</p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">Verification Requests</h1>
-          <p className="text-sm text-muted-foreground mt-1">Review profiles requesting a golden verification tick</p>
-        </div>
+        <Link
+          to="/admin/users"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+        >
+          <User className="w-4 h-4" />
+          All Users
+        </Link>
       </div>
 
       {/* Tabs */}
