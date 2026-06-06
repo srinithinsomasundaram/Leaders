@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Camera, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { updateMyProfile, requestVerification, sendConnectionRequest, removeConnection } from "@/lib/posts.functions";
+import { updateMyProfile, requestVerification } from "@/lib/posts.functions";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import {
   Dialog,
@@ -19,7 +19,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { getPersonSchema, getBreadcrumbSchema, combineSchemas } from "@/lib/seo";
-import { UserPlus, UserMinus, UserCheck } from "lucide-react";
 
 export const Route = createFileRoute("/leader/$username")({
   loader: async ({ context: { queryClient }, params }) => {
@@ -107,8 +106,6 @@ function ProfilePage() {
   const navigate = useNavigate();
   const updateProfileFn = useServerFn(updateMyProfile);
   const requestVerifyFn = useServerFn(requestVerification);
-  const sendConnectionFn = useServerFn(sendConnectionRequest);
-  const removeConnectionFn = useServerFn(removeConnection);
   const qc = useQueryClient();
 
   const [uploading, setUploading] = useState(false);
@@ -120,7 +117,6 @@ function ProfilePage() {
   const [requestingVerify, setRequestingVerify] = useState(false);
   const [verifyReason, setVerifyReason] = useState("");
   const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [connectingUser, setConnectingUser] = useState(false);
 
   const isOwnProfile = user && user.id === profile.id;
 
@@ -136,37 +132,6 @@ function ProfilePage() {
         .eq("status", "pending")
         .maybeSingle();
       return data;
-    },
-  });
-
-  // Get connection count
-  const { data: connectionCount } = useQuery({
-    queryKey: ["connection-count", profile.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_connection_count", { user_id: profile.id });
-      if (error) {
-        console.error("Error getting connection count:", error);
-        return 0;
-      }
-      return data || 0;
-    },
-  });
-
-  // Get connection status with current user
-  const { data: connectionStatus, refetch: refetchConnectionStatus } = useQuery({
-    queryKey: ["connection-status", user?.id, profile.id],
-    enabled: !!user && !isOwnProfile,
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase.rpc("get_connection_status", {
-        user1_id: user.id,
-        user2_id: profile.id,
-      });
-      if (error) {
-        console.error("Error getting connection status:", error);
-        return null;
-      }
-      return data?.[0] || null;
     },
   });
 
@@ -287,47 +252,6 @@ function ProfilePage() {
     }
   }
 
-  async function handleConnect() {
-    if (!user) {
-      toast.info("Please sign in to connect");
-      return;
-    }
-
-    setConnectingUser(true);
-    try {
-      const { status } = await sendConnectionFn({ data: { receiver_id: profile.id } });
-      if (status === "accepted") {
-        toast.success("Connected successfully!");
-      } else {
-        toast.success("Connection request sent!");
-      }
-      await refetchConnectionStatus();
-      qc.invalidateQueries({ queryKey: ["connection-count", profile.id] });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to connect");
-    } finally {
-      setConnectingUser(false);
-    }
-  }
-
-  async function handleRemoveConnection() {
-    if (!connectionStatus?.connection_id) return;
-
-    if (!window.confirm("Are you sure you want to remove this connection?")) return;
-
-    setConnectingUser(true);
-    try {
-      await removeConnectionFn({ data: { connection_id: connectionStatus.connection_id } });
-      toast.success("Connection removed");
-      await refetchConnectionStatus();
-      qc.invalidateQueries({ queryKey: ["connection-count", profile.id] });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to remove connection");
-    } finally {
-      setConnectingUser(false);
-    }
-  }
-
   // Enhanced structured data for profile
   const personSchema = getPersonSchema({
     username: profile.username,
@@ -426,53 +350,10 @@ function ProfilePage() {
             <span>·</span>
             <span>Joined {formatRelativeTime(profile.created_at)}</span>
             <span>·</span>
-            <span className="font-medium">{connectionCount || 0} connections</span>
-            <span>·</span>
             <span>{posts?.length ?? 0} posts</span>
           </div>
         </div>
       </div>
-
-      {/* Connection button for other users */}
-      {!isOwnProfile && user && (
-        <div className="mt-4">
-          {!connectionStatus && (
-            <button
-              onClick={handleConnect}
-              disabled={connectingUser}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              {connectingUser ? "Connecting..." : "Connect"}
-            </button>
-          )}
-          {connectionStatus?.status === "pending" && connectionStatus.requester_id === user.id && (
-            <button
-              disabled
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-surface-2 text-muted-foreground text-sm font-medium cursor-not-allowed"
-            >
-              <UserCheck className="w-4 h-4" />
-              Request Pending
-            </button>
-          )}
-          {connectionStatus?.status === "pending" && connectionStatus.receiver_id === user.id && (
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-surface-2 text-foreground text-sm font-medium">
-              <UserCheck className="w-4 h-4" />
-              Pending approval
-            </span>
-          )}
-          {connectionStatus?.status === "accepted" && (
-            <button
-              onClick={handleRemoveConnection}
-              disabled={connectingUser}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-border text-sm font-medium hover:bg-surface-2 cursor-pointer"
-            >
-              <UserMinus className="w-4 h-4" />
-              {connectingUser ? "Removing..." : "Connected"}
-            </button>
-          )}
-        </div>
-      )}
 
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent className="sm:max-w-[425px]">
