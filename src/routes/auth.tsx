@@ -111,6 +111,58 @@ function AuthPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
+  // Validation states
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong" | null>(null);
+
+  // Real-time username validation
+  const validateUsername = (value: string) => {
+    const cleaned = value.toLowerCase().trim();
+    if (!cleaned) {
+      setUsernameError("");
+      return;
+    }
+    if (cleaned.length < 3) {
+      setUsernameError("Too short (min 3 chars)");
+    } else if (cleaned.length > 30) {
+      setUsernameError("Too long (max 30 chars)");
+    } else if (!/^[a-z0-9_]+$/.test(cleaned)) {
+      setUsernameError("Only letters, numbers, & underscores");
+    } else {
+      setUsernameError("");
+    }
+  };
+
+  // Real-time password validation
+  const validatePassword = (value: string) => {
+    if (!value) {
+      setPasswordError("");
+      setPasswordStrength(null);
+      return;
+    }
+    if (value.length < 6) {
+      setPasswordError("At least 6 characters required");
+      setPasswordStrength(null);
+    } else {
+      setPasswordError("");
+      // Calculate strength
+      const hasUpper = /[A-Z]/.test(value);
+      const hasLower = /[a-z]/.test(value);
+      const hasNumber = /[0-9]/.test(value);
+      const hasSpecial = /[^A-Za-z0-9]/.test(value);
+      const score = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+
+      if (value.length >= 12 && score >= 3) {
+        setPasswordStrength("strong");
+      } else if (value.length >= 8 && score >= 2) {
+        setPasswordStrength("medium");
+      } else {
+        setPasswordStrength("weak");
+      }
+    }
+  };
+
   // Resend countdown
   const [resendCountdown, setResendCountdown] = useState(60);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -520,10 +572,34 @@ function AuthPage() {
                   <label className="text-xs font-medium text-muted-foreground">Username</label>
                   <div className="relative mt-1">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input required value={username} onChange={(e) => setUsername(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all placeholder:text-muted-foreground/60"
-                      placeholder="yourusername" />
+                    <input
+                      required
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        validateUsername(e.target.value);
+                      }}
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface border text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all placeholder:text-muted-foreground/60 ${
+                        usernameError ? "border-destructive focus:ring-destructive/40" : "border-border"
+                      }`}
+                      placeholder="johndoe"
+                      maxLength={30}
+                    />
                   </div>
+                  {usernameError ? (
+                    <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
+                      <span className="font-medium">{usernameError}</span>
+                    </p>
+                  ) : username && !usernameError ? (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1.5 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Looks good!</span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      3-30 characters • Letters, numbers, underscores only
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Name</label>
@@ -561,8 +637,16 @@ function AuthPage() {
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-lg bg-surface border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all placeholder:text-muted-foreground/60"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (mode === "signup") validatePassword(e.target.value);
+                  }}
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg bg-surface border text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all placeholder:text-muted-foreground/60 ${
+                    passwordError ? "border-destructive focus:ring-destructive/40" : "border-border"
+                  }`}
                   placeholder="••••••••"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -571,6 +655,45 @@ function AuthPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {mode === "signup" && (
+                <>
+                  {passwordError ? (
+                    <p className="text-xs text-destructive mt-1.5 font-medium">{passwordError}</p>
+                  ) : password.length >= 6 ? (
+                    <div className="mt-2 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${
+                              passwordStrength === "strong"
+                                ? "w-full bg-green-500"
+                                : passwordStrength === "medium"
+                                ? "w-2/3 bg-yellow-500"
+                                : "w-1/3 bg-red-500"
+                            }`}
+                          />
+                        </div>
+                        <span
+                          className={`text-xs font-medium ${
+                            passwordStrength === "strong"
+                              ? "text-green-600 dark:text-green-400"
+                              : passwordStrength === "medium"
+                              ? "text-yellow-600 dark:text-yellow-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {passwordStrength === "strong" ? "Strong" : passwordStrength === "medium" ? "Medium" : "Weak"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        💡 Add uppercase, numbers & symbols for a stronger password
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1.5">Minimum 6 characters</p>
+                  )}
+                </>
+              )}
             </div>
 
             <button disabled={loading}
