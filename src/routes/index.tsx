@@ -1,54 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { z } from "zod";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
 import { Compass } from "lucide-react";
 import { getItemListSchema } from "@/lib/seo";
-import { useAuth } from "@/hooks/use-auth";
-
-const searchSchema = z.object({
-  sort: z.enum(["explore", "trending"]).optional(),
-});
 
 const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier), categories(name, slug)";
 
-async function fetchFeed(sort: "explore" | "trending", userId?: string) {
+async function fetchFeed() {
   try {
-    let q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
+    const { data, error } = await supabase
+      .from("posts")
+      .select(POST_FIELDS)
+      .eq("hidden", false)
+      .order("created_at", { ascending: false })
+      .limit(30);
 
-    // For "explore" feed, show all posts sorted by recent
-    if (sort === "explore") {
-      const { data, error } = await q.order("created_at", { ascending: false });
-      if (error) {
-        console.error("[home] Failed to load explore feed:", error);
-        return [];
-      }
-      return data as unknown as PostCardData[];
+    if (error) {
+      console.error("[home] Failed to load feed:", error);
+      return [];
     }
-
-    // For "trending" feed, show posts with highest engagement (upvotes + comments)
-    if (sort === "trending") {
-      // Fetch posts and sort by engagement on client side
-      // Note: Supabase doesn't support ORDER BY computed columns directly
-      const { data, error } = await q;
-      if (error) {
-        console.error("[home] Failed to load trending feed:", error);
-        return [];
-      }
-
-      // Sort by engagement: upvotes + (comments * 2) for higher weight on discussion
-      const sorted = (data as unknown as PostCardData[]).sort((a, b) => {
-        const engagementA = (a.upvote_count || 0) + ((a.comment_count || 0) * 2);
-        const engagementB = (b.upvote_count || 0) + ((b.comment_count || 0) * 2);
-        return engagementB - engagementA;
-      });
-
-      return sorted.slice(0, 30);
-    }
-
-    return [];
+    return data as unknown as PostCardData[];
   } catch (error) {
     console.error("[home] Feed request crashed:", error);
     return [];
@@ -76,28 +49,11 @@ async function fetchCategories() {
 }
 
 export const Route = createFileRoute("/")({
-  validateSearch: searchSchema,
-  loaderDeps: ({ search: { sort } }) => ({ sort }),
-  loader: async ({ context: { queryClient, supabase }, deps: { sort } }) => {
-    // Get current user ID for connected feed (with error handling for SSR)
-    let userId: string | undefined;
-    try {
-      if (supabase) {
-        const { data: { user } } = await (supabase as any).auth.getUser();
-        userId = user?.id;
-      }
-    } catch (error) {
-      console.error("[home loader] Failed to get user:", error);
-      userId = undefined;
-    }
-
-    // Default: Explore
-    const actualSort = sort || "explore";
-
+  loader: async ({ context: { queryClient } }) => {
     await Promise.all([
       queryClient.ensureQueryData({
-        queryKey: ["posts", "feed", actualSort, userId],
-        queryFn: () => fetchFeed(actualSort, userId),
+        queryKey: ["posts", "feed"],
+        queryFn: fetchFeed,
       }),
       queryClient.ensureQueryData({
         queryKey: ["categories"],
@@ -132,14 +88,9 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { user } = useAuth();
-
-  // Default: Explore
-  const { sort = "explore" } = Route.useSearch();
-
   const { data: posts, isLoading } = useQuery({
-    queryKey: ["posts", "feed", sort, user?.id],
-    queryFn: () => fetchFeed(sort, user?.id),
+    queryKey: ["posts", "feed"],
+    queryFn: fetchFeed,
   });
 
   const { data: cats } = useQuery({
@@ -148,11 +99,10 @@ function HomePage() {
   });
 
   // Enhanced structured data for homepage feed
-  const feedName = sort === "trending" ? "Trending" : "Explore";
   const itemListSchema = posts && posts.length > 0 ? getItemListSchema({
-    name: `${feedName} Posts`,
+    name: "Explore Posts",
     url: "https://yespleaders.com/",
-    description: `${feedName} posts from founders, developers, creators, and builders`,
+    description: "Latest posts from founders, developers, creators, and builders",
     items: posts.slice(0, 10).map((post, index) => ({
       url: `https://yespleaders.com/post/${post.slug}`,
       name: post.title,
@@ -210,22 +160,6 @@ function HomePage() {
         ))}
       </div>
     </div>
-  );
-}
-
-function SortLink({ to, search, active, children, icon }: { to: string; search: Record<string, unknown>; active: boolean; children: React.ReactNode; icon: React.ReactNode }) {
-  return (
-    <Link
-      to={to as never}
-      search={search as never}
-      className={
-        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors " +
-        (active ? "bg-surface-2 text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-surface")
-      }
-    >
-      {icon}
-      {children}
-    </Link>
   );
 }
 
