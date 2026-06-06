@@ -6,7 +6,7 @@ const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
 import { formatRelativeTime } from "@/lib/slug";
 import { useAuth } from "@/hooks/use-auth";
-import { Camera, Loader2, ShieldCheck } from "lucide-react";
+import { Camera, Loader2, ShieldCheck, Lock, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { updateMyProfile, requestVerification, sendConnectionRequest, removeConnection } from "@/lib/posts.functions";
@@ -24,9 +24,9 @@ import { UserPlus, UserMinus, UserCheck } from "lucide-react";
 export const Route = createFileRoute("/leader/$username")({
   loader: async ({ context: { queryClient }, params }) => {
     console.log("[Profile Loader] Searching for username:", params.username);
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from("profiles")
-      .select("id, username, name, profession, avatar_url, created_at, username_last_updated_at, is_verified, verification_requested_at")
+      .select("id, username, name, profession, avatar_url, created_at, username_last_updated_at, is_verified, verification_requested_at, account_type")
       .eq("username", params.username)
       .maybeSingle();
 
@@ -116,6 +116,7 @@ function ProfilePage() {
   const [editName, setEditName] = useState(profile.name);
   const [editUsername, setEditUsername] = useState(profile.username);
   const [editProfession, setEditProfession] = useState(profile.profession || "");
+  const [editAccountType, setEditAccountType] = useState<"public" | "private">(profile.account_type || "public");
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [requestingVerify, setRequestingVerify] = useState(false);
   const [verifyReason, setVerifyReason] = useState("");
@@ -268,6 +269,7 @@ function ProfilePage() {
           username: cleanedUsername,
           profession: editProfession.trim() || null,
           avatar_url: profile.avatar_url,
+          account_type: editAccountType,
         }
       });
 
@@ -399,6 +401,7 @@ function ProfilePage() {
                   setEditName(profile.name);
                   setEditUsername(profile.username);
                   setEditProfession(profile.profession || "");
+                  setEditAccountType(profile.account_type || "public");
                   setShowEditModal(true);
                 }}
                 className="px-2.5 py-1 text-xs font-medium rounded border border-border hover:bg-surface-2 transition-colors cursor-pointer"
@@ -513,6 +516,42 @@ function ProfilePage() {
                   Username can be edited once in a month. You can edit it again after {getUsernameChangeAvailableDate()}.
                 </p>
               )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Account Type</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditAccountType("public")}
+                  className={
+                    "flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors cursor-pointer inline-flex items-center justify-center gap-2 " +
+                    (editAccountType === "public"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-surface border-border hover:bg-surface-2")
+                  }
+                >
+                  <Globe className="w-4 h-4" />
+                  Public
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditAccountType("private")}
+                  className={
+                    "flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors cursor-pointer inline-flex items-center justify-center gap-2 " +
+                    (editAccountType === "private"
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-surface border-border hover:bg-surface-2")
+                  }
+                >
+                  <Lock className="w-4 h-4" />
+                  Private
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {editAccountType === "public"
+                  ? "Anyone can connect with you instantly"
+                  : "Connection requests require your approval"}
+              </p>
             </div>
             <DialogFooter className="pt-2">
               <button
