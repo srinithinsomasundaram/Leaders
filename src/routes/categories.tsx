@@ -46,6 +46,38 @@ const CATEGORY_THEMES: Record<string, { gradient: string; text: string }> = {
     gradient: "from-teal-400 to-emerald-500",
     text: "text-teal-700 dark:text-teal-400"
   },
+  students: {
+    gradient: "from-blue-500 to-indigo-600",
+    text: "text-blue-700 dark:text-blue-400"
+  },
+  creators: {
+    gradient: "from-pink-500 to-rose-600",
+    text: "text-pink-700 dark:text-pink-400"
+  },
+  design: {
+    gradient: "from-purple-500 to-pink-600",
+    text: "text-purple-700 dark:text-purple-400"
+  },
+  finance: {
+    gradient: "from-green-500 to-emerald-600",
+    text: "text-green-700 dark:text-green-400"
+  },
+  leadership: {
+    gradient: "from-slate-500 to-gray-600",
+    text: "text-slate-700 dark:text-slate-400"
+  },
+  growth: {
+    gradient: "from-lime-500 to-green-600",
+    text: "text-lime-700 dark:text-lime-400"
+  },
+  community: {
+    gradient: "from-orange-500 to-amber-600",
+    text: "text-orange-700 dark:text-orange-400"
+  },
+  "no-code": {
+    gradient: "from-fuchsia-500 to-purple-600",
+    text: "text-fuchsia-700 dark:text-fuchsia-400"
+  },
 };
 
 const defaultTheme = {
