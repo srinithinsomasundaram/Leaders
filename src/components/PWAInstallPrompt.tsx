@@ -9,8 +9,17 @@ export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Check if we're on the client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
+    // Only run on client side
+    if (!isClient || typeof window === 'undefined') return;
+
     // Check if already installed
     const installed = localStorage.getItem(INSTALLED_KEY);
     if (installed) {
@@ -59,7 +68,7 @@ export function PWAInstallPrompt() {
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
     };
-  }, []);
+  }, [isClient]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -88,7 +97,7 @@ export function PWAInstallPrompt() {
   };
 
   // Show "Open in App" button if installed
-  if (isInstalled && window.matchMedia('(display-mode: browser)').matches) {
+  if (isClient && isInstalled && typeof window !== 'undefined' && window.matchMedia('(display-mode: browser)').matches) {
     return (
       <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300">
         <button
@@ -103,7 +112,7 @@ export function PWAInstallPrompt() {
   }
 
   // Show install prompt if not installed and not dismissed
-  if (!showPrompt || !deferredPrompt) return null;
+  if (!isClient || !showPrompt || !deferredPrompt) return null;
 
   return (
     <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50 animate-in slide-in-from-bottom-4 duration-300">

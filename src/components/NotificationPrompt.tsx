@@ -7,8 +7,17 @@ const COOLDOWN_HOURS = 72; // 3 days
 export function NotificationPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
+  const [isClient, setIsClient] = useState(false);
+
+  // Check if we're on the client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
+    // Only run on client side
+    if (!isClient || typeof window === 'undefined') return;
+
     // Check current permission status
     if ('Notification' in window) {
       setPermission(Notification.permission);
@@ -39,7 +48,7 @@ export function NotificationPrompt() {
 
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isClient]);
 
   const handleAllow = async () => {
     if ('Notification' in window && 'serviceWorker' in navigator) {
@@ -83,8 +92,8 @@ export function NotificationPrompt() {
     setShowPrompt(false);
   };
 
-  // Don't show if notifications not supported or permission already handled
-  if (!('Notification' in window) || !showPrompt || permission !== "default") {
+  // Don't show if not on client or notifications not supported or permission already handled
+  if (!isClient || (typeof window !== 'undefined' && !('Notification' in window)) || !showPrompt || permission !== "default") {
     return null;
   }
 
