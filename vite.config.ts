@@ -56,12 +56,12 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       rollupOptions: {
-        external: ["@anthropic-ai/sdk"],
+        external: ["@google/generative-ai"],
       },
     },
     ssr: {
       noExternal: [],
-      external: ["@anthropic-ai/sdk"],
+      external: ["@google/generative-ai"],
     },
   };
 });

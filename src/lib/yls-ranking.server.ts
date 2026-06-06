@@ -3,11 +3,9 @@
  * Business-value based algorithm, not vanity metrics
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || "",
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 interface BusinessRelevanceAnalysis {
   business_relevance_score: number; // 0-10
@@ -69,19 +67,15 @@ Analyze this post and return a JSON object with:
 
 Return ONLY valid JSON, no other text.`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-5-haiku-20241022",
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
     });
 
-    const responseText =
-      message.content[0].type === "text" ? message.content[0].text : "{}";
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
 
     // Parse the JSON response
     const analysis: BusinessRelevanceAnalysis = JSON.parse(responseText);
