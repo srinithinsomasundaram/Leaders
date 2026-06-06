@@ -87,9 +87,17 @@ export const Route = createFileRoute("/")({
   validateSearch: searchSchema,
   loaderDeps: ({ search: { sort } }) => ({ sort }),
   loader: async ({ context: { queryClient, supabase }, deps: { sort = "trending" } }) => {
-    // Get current user ID for connected feed
-    const { data: { user } } = await (supabase as any).auth.getUser();
-    const userId = user?.id;
+    // Get current user ID for connected feed (with error handling for SSR)
+    let userId: string | undefined;
+    try {
+      if (supabase) {
+        const { data: { user } } = await (supabase as any).auth.getUser();
+        userId = user?.id;
+      }
+    } catch (error) {
+      console.error("[home loader] Failed to get user:", error);
+      userId = undefined;
+    }
 
     await Promise.all([
       queryClient.ensureQueryData({
