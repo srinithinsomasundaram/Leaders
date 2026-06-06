@@ -19,14 +19,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { getPersonSchema, getBreadcrumbSchema, combineSchemas } from "@/lib/seo";
-import { UserPlus, UserMinus, UserCheck, Lock, Globe } from "lucide-react";
+import { UserPlus, UserMinus, UserCheck } from "lucide-react";
 
 export const Route = createFileRoute("/leader/$username")({
   loader: async ({ context: { queryClient }, params }) => {
     console.log("[Profile Loader] Searching for username:", params.username);
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, name, profession, avatar_url, created_at, username_last_updated_at, is_verified, verification_requested_at, account_type")
+      .select("id, username, name, profession, avatar_url, created_at, username_last_updated_at, is_verified, verification_requested_at")
       .eq("username", params.username)
       .maybeSingle();
 
@@ -116,7 +116,6 @@ function ProfilePage() {
   const [editName, setEditName] = useState(profile.name);
   const [editUsername, setEditUsername] = useState(profile.username);
   const [editProfession, setEditProfession] = useState(profile.profession || "");
-  const [editAccountType, setEditAccountType] = useState<"public" | "private">(profile.account_type || "public");
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [requestingVerify, setRequestingVerify] = useState(false);
   const [verifyReason, setVerifyReason] = useState("");
@@ -269,7 +268,6 @@ function ProfilePage() {
           username: cleanedUsername,
           profession: editProfession.trim() || null,
           avatar_url: profile.avatar_url,
-          account_type: editAccountType,
         }
       });
 
@@ -401,7 +399,6 @@ function ProfilePage() {
                   setEditName(profile.name);
                   setEditUsername(profile.username);
                   setEditProfession(profile.profession || "");
-                  setEditAccountType(profile.account_type || "public");
                   setShowEditModal(true);
                 }}
                 className="px-2.5 py-1 text-xs font-medium rounded border border-border hover:bg-surface-2 transition-colors cursor-pointer"
@@ -432,22 +429,6 @@ function ProfilePage() {
             <span className="font-medium">{connectionCount || 0} connections</span>
             <span>·</span>
             <span>{posts?.length ?? 0} posts</span>
-            {profile.account_type === "private" && (
-              <>
-                <span>·</span>
-                <span className="inline-flex items-center gap-1">
-                  <Lock className="w-3 h-3" /> Private
-                </span>
-              </>
-            )}
-            {profile.account_type === "public" && (
-              <>
-                <span>·</span>
-                <span className="inline-flex items-center gap-1">
-                  <Globe className="w-3 h-3" /> Public
-                </span>
-              </>
-            )}
           </div>
         </div>
       </div>
@@ -532,48 +513,6 @@ function ProfilePage() {
                   Username can be edited once in a month. You can edit it again after {getUsernameChangeAvailableDate()}.
                 </p>
               )}
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Account Type</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditAccountType("public")}
-                  className={
-                    "flex-1 px-4 py-3 rounded-md border text-sm transition-colors " +
-                    (editAccountType === "public"
-                      ? "border-primary bg-primary/5 text-primary font-medium"
-                      : "border-border hover:border-primary/50")
-                  }
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    <span>Public</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Anyone can connect</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditAccountType("private")}
-                  className={
-                    "flex-1 px-4 py-3 rounded-md border text-sm transition-colors " +
-                    (editAccountType === "private"
-                      ? "border-primary bg-primary/5 text-primary font-medium"
-                      : "border-border hover:border-primary/50")
-                  }
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    <span>Private</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Approve requests</p>
-                </button>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {editAccountType === "public"
-                  ? "Public accounts auto-accept all connection requests"
-                  : "Private accounts require you to approve each connection request"}
-              </p>
             </div>
             <DialogFooter className="pt-2">
               <button
