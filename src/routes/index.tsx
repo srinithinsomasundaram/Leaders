@@ -4,17 +4,17 @@ import { z } from "zod";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
-import { Flame, Clock, Users, Briefcase } from "lucide-react";
+import { Flame, Users, Compass } from "lucide-react";
 import { getItemListSchema } from "@/lib/seo";
 import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({
-  sort: z.enum(["connected", "public", "trending"]).optional(),
+  sort: z.enum(["connected", "explore", "trending"]).optional(),
 });
 
 const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)";
 
-async function fetchFeed(sort: "connected" | "public" | "trending", userId?: string) {
+async function fetchFeed(sort: "connected" | "explore" | "trending", userId?: string) {
   try {
     let q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
 
@@ -45,26 +45,34 @@ async function fetchFeed(sort: "connected" | "public" | "trending", userId?: str
       }
     }
 
-    // For "public" feed, show all posts sorted by recent
-    if (sort === "public") {
+    // For "explore" feed, show all posts sorted by recent
+    if (sort === "explore") {
       const { data, error } = await q.order("created_at", { ascending: false });
       if (error) {
-        console.error("[home] Failed to load public feed:", error);
+        console.error("[home] Failed to load explore feed:", error);
         return [];
       }
       return data as unknown as PostCardData[];
     }
 
-    // For "trending" feed, show high YLS score posts (opportunities + trending)
+    // For "trending" feed, show posts with highest engagement (upvotes + comments)
     if (sort === "trending") {
-      const { data, error } = await q
-        .order("yls_score", { ascending: false })
-        .order("created_at", { ascending: false });
+      // Fetch posts and sort by engagement on client side
+      // Note: Supabase doesn't support ORDER BY computed columns directly
+      const { data, error } = await q;
       if (error) {
         console.error("[home] Failed to load trending feed:", error);
         return [];
       }
-      return data as unknown as PostCardData[];
+
+      // Sort by engagement: upvotes + (comments * 2) for higher weight on discussion
+      const sorted = (data as unknown as PostCardData[]).sort((a, b) => {
+        const engagementA = (a.upvote_count || 0) + ((a.comment_count || 0) * 2);
+        const engagementB = (b.upvote_count || 0) + ((b.comment_count || 0) * 2);
+        return engagementB - engagementA;
+      });
+
+      return sorted.slice(0, 30);
     }
 
     return [];
@@ -110,8 +118,8 @@ export const Route = createFileRoute("/")({
       userId = undefined;
     }
 
-    // Default: Connected if logged in, Public if not logged in
-    const defaultSort = userId ? "connected" : "public";
+    // Default: Connected if logged in, Explore if not logged in
+    const defaultSort = userId ? "connected" : "explore";
     const actualSort = sort || defaultSort;
 
     await Promise.all([
@@ -154,8 +162,8 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   const { user } = useAuth();
 
-  // Default: Connected if logged in, Public if not logged in
-  const defaultSort = user ? "connected" : "public";
+  // Default: Connected if logged in, Explore if not logged in
+  const defaultSort = user ? "connected" : "explore";
   const { sort = defaultSort } = Route.useSearch();
 
   const { data: posts, isLoading } = useQuery({
@@ -169,7 +177,7 @@ function HomePage() {
   });
 
   // Enhanced structured data for homepage feed
-  const feedName = sort === "trending" ? "Trending" : sort === "connected" ? "Connected" : "Public";
+  const feedName = sort === "trending" ? "Trending" : sort === "connected" ? "Connected" : "Explore";
   const itemListSchema = posts && posts.length > 0 ? getItemListSchema({
     name: `${feedName} Posts`,
     url: "https://yespleaders.com/",
@@ -215,8 +223,8 @@ function HomePage() {
               Connected
             </SortLink>
           )}
-          <SortLink to="/" search={{ sort: "public" }} active={sort === "public"} icon={<Clock className="w-3.5 h-3.5" />}>
-            Public
+          <SortLink to="/" search={{ sort: "explore" }} active={sort === "explore"} icon={<Compass className="w-3.5 h-3.5" />}>
+            Explore
           </SortLink>
           <SortLink to="/" search={{ sort: "trending" }} active={sort === "trending"} icon={<Flame className="w-3.5 h-3.5" />}>
             Trending
