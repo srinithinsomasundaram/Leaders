@@ -14,6 +14,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { Header } from "@/components/layout/Header";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 function NotFoundComponent() {
   return (
@@ -80,6 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "apple-touch-icon", href: "/favicon.svg" },
+      { rel: "manifest", href: "/manifest.json" },
     ],
   }),
   shellComponent: RootShell,
@@ -122,6 +124,7 @@ function RootComponent() {
           </footer>
         </div>
         <MobileBottomNav />
+        <PWAInstallPrompt />
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -1,0 +1,20 @@
+{
+  "name": "Yesp Leaders",
+  "short_name": "Leaders",
+  "description": "Share lessons. Get discovered by Google & AI engines. Join the Yesp Leaders community.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity", "social"],
+  "screenshots": []
+}
