@@ -4,7 +4,7 @@ import { z } from "zod";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
-import { Flame, Compass } from "lucide-react";
+import { Compass } from "lucide-react";
 import { getItemListSchema } from "@/lib/seo";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -12,7 +12,7 @@ const searchSchema = z.object({
   sort: z.enum(["explore", "trending"]).optional(),
 });
 
-const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)";
+const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier), categories(name, slug)";
 
 async function fetchFeed(sort: "explore" | "trending", userId?: string) {
   try {
@@ -189,12 +189,10 @@ function HomePage() {
 
       <div>
         <div className="flex items-center gap-1 mb-2 text-sm flex-wrap">
-          <SortLink to="/" search={{ sort: "explore" }} active={sort === "explore"} icon={<Compass className="w-3.5 h-3.5" />}>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-surface-2 text-foreground">
+            <Compass className="w-3.5 h-3.5" />
             Explore
-          </SortLink>
-          <SortLink to="/" search={{ sort: "trending" }} active={sort === "trending"} icon={<Flame className="w-3.5 h-3.5" />}>
-            Trending
-          </SortLink>
+          </div>
         </div>
 
         {isLoading && (
@@ -207,8 +205,8 @@ function HomePage() {
         {!isLoading && posts && posts.length === 0 && (
           <EmptyState />
         )}
-        {posts?.map((p, i) => (
-          <PostCard key={p.id} post={p} rank={sort === "trending" ? i + 1 : undefined} />
+        {posts?.map((p) => (
+          <PostCard key={p.id} post={p} />
         ))}
       </div>
     </div>

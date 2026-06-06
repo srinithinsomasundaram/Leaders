@@ -27,7 +27,7 @@ export const Route = createFileRoute("/post/$slug")({
     const { data, error } = await supabase
       .from("posts")
       .select(
-        "id, slug, title, content, image_urls, tags, ai_summary, ai_keywords, ai_insights, seo_title, seo_description, upvote_count, comment_count, created_at, user_id, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)"
+        "id, slug, title, content, image_urls, tags, ai_summary, ai_keywords, ai_insights, seo_title, seo_description, upvote_count, comment_count, created_at, user_id, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier), categories(name, slug)"
       )
       .eq("slug", params.slug)
       .maybeSingle();
@@ -162,7 +162,7 @@ function PostPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("comments")
-        .select("id, content, created_at, user_id, parent_id, upvote_count, profiles!inner(username, name, profession, avatar_url, is_verified)")
+        .select("id, content, created_at, user_id, parent_id, upvote_count, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier)")
         .eq("post_id", post.id)
         .order("created_at", { ascending: true });
       return (data ?? []) as any[];
@@ -324,7 +324,7 @@ function PostPage() {
             <div>
               <p className="text-sm font-semibold group-hover:text-primary inline-flex items-center gap-1">
                 {post.profiles.name}
-                {(post.profiles as any).is_verified && <VerifiedBadge size={15} />}
+                {(post.profiles as any).is_verified && <VerifiedBadge size={15} tier={(post.profiles as any).verification_tier || "leader"} />}
               </p>
               {post.profiles.profession && <p className="text-xs text-muted-foreground">{post.profiles.profession}</p>}
             </div>
@@ -454,7 +454,7 @@ function PostPage() {
                   <div className="text-xs text-muted-foreground">
                     <Link to="/leader/$username" params={{ username: c.profiles?.username || "" }} className="font-semibold text-foreground hover:text-primary inline-flex items-center gap-1">
                       {c.profiles?.name}
-                      {(c.profiles as any)?.is_verified && <VerifiedBadge size={12} />}
+                      {(c.profiles as any)?.is_verified && <VerifiedBadge size={12} tier={(c.profiles as any)?.verification_tier || "leader"} />}
                     </Link>
                     {c.profiles?.profession && <> · {c.profiles.profession}</>}
                     <> · {formatRelativeTime(c.created_at)}</>

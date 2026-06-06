@@ -16,7 +16,7 @@ export const Route = createFileRoute("/c/$slug")({
       queryFn: async () => {
         const { data: posts } = await supabase
           .from("posts")
-          .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)")
+          .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier), categories(name, slug)")
           .eq("category_id", data.id)
           .eq("hidden", false)
           .order("upvote_count", { ascending: false });
@@ -67,7 +67,7 @@ function CategoryPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("posts")
-        .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)")
+        .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier), categories(name, slug)")
         .eq("category_id", cat.id)
         .eq("hidden", false)
         .order("upvote_count", { ascending: false });

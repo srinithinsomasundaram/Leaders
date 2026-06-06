@@ -26,7 +26,7 @@ export const Route = createFileRoute("/leader/$username")({
     console.log("[Profile Loader] Searching for username:", params.username);
     const { data, error} = await supabase
       .from("profiles")
-      .select("id, username, name, profession, avatar_url, created_at, username_last_updated_at, is_verified, verification_requested_at, account_type")
+      .select("id, username, name, profession, avatar_url, created_at, username_last_updated_at, is_verified, verification_tier, verification_requested_at, account_type")
       .eq("username", params.username)
       .maybeSingle();
 
@@ -50,7 +50,7 @@ export const Route = createFileRoute("/leader/$username")({
       queryFn: async () => {
         const { data: posts } = await supabase
           .from("posts")
-          .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)")
+          .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier), categories(name, slug)")
           .eq("user_id", data.id)
           .eq("hidden", false)
           .order("created_at", { ascending: false });
@@ -207,7 +207,7 @@ function ProfilePage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("posts")
-        .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)")
+        .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier), categories(name, slug)")
         .eq("user_id", profile.id)
         .eq("hidden", false)
         .order("created_at", { ascending: false });
@@ -393,7 +393,7 @@ function ProfilePage() {
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-serif text-3xl font-bold inline-flex items-center gap-1.5">
               {profile.name}
-              {profile.is_verified && <VerifiedBadge size={22} />}
+              {profile.is_verified && <VerifiedBadge size={22} tier={profile.verification_tier || "leader"} />}
             </h1>
             {isOwnProfile && (
               <button

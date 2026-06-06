@@ -25,7 +25,7 @@ export type PostCardData = {
   upvote_count: number;
   comment_count: number;
   created_at: string;
-  profiles: { username: string; name: string; profession: string | null; avatar_url: string | null; is_verified?: boolean } | null;
+  profiles: { username: string; name: string; profession: string | null; avatar_url: string | null; is_verified?: boolean; verification_tier?: "creator" | "leader" | "elite" | null } | null;
   categories: { name: string; slug: string } | null;
 };
 
@@ -95,7 +95,7 @@ export function PostCard({ post, rank }: { post: PostCardData; rank?: number }) 
             <>
               <Link to="/leader/$username" params={{ username: post.profiles.username }} className="hover:text-foreground font-medium inline-flex items-center gap-1">
                 {post.profiles.name}
-                {post.profiles.is_verified && <VerifiedBadge size={13} />}
+                {post.profiles.is_verified && <VerifiedBadge size={13} tier={post.profiles.verification_tier || "leader"} />}
               </Link>
               {post.profiles.profession && <span className="text-muted-foreground/70">· {post.profiles.profession}</span>}
             </>

@@ -117,7 +117,7 @@ function SearchPage() {
       const term = `%${q}%`;
       const { data } = await supabase
         .from("posts")
-        .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)")
+        .select("id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified, verification_tier), categories(name, slug)")
         .or(`title.ilike.${term},content.ilike.${term}`)
         .eq("hidden", false)
         .order("upvote_count", { ascending: false })
@@ -237,7 +237,7 @@ function SearchPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="font-semibold text-sm truncate">{user.name}</p>
-                    {user.is_verified && <VerifiedBadge size={14} />}
+                    {user.is_verified && <VerifiedBadge size={14} tier={user.verification_tier || "leader"} />}
                   </div>
                   <p className="text-xs text-muted-foreground">@{user.username}</p>
                   {user.profession && (
