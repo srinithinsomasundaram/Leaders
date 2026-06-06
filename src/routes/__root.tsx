@@ -15,6 +15,8 @@ import { Header } from "@/components/layout/Header";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { registerServiceWorker } from "@/lib/serviceWorker";
 
 function NotFoundComponent() {
   return (
@@ -104,6 +106,14 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Register service worker on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      registerServiceWorker();
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -125,6 +135,7 @@ function RootComponent() {
         </div>
         <MobileBottomNav />
         <PWAInstallPrompt />
+        <NotificationPrompt />
       </AuthProvider>
     </QueryClientProvider>
   );
