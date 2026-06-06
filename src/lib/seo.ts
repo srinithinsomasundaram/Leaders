@@ -250,13 +250,3 @@ export function combineSchemas(...schemas: any[]) {
     "@graph": schemas,
   };
 }
-
-// Helper to generate structured data script tag
-export function renderStructuredData(schema: any) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
-  );
-}

@@ -1,9 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PostCard, type PostCardData } from "@/components/PostCard";
+import { FileText, Users } from "lucide-react";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 const searchSchema = z.object({ q: z.string().optional() });
 
@@ -90,6 +92,7 @@ function SearchPage() {
   const { q = "" } = Route.useSearch();
   const navigate = useNavigate();
   const [input, setInput] = useState(q);
+  const [activeTab, setActiveTab] = useState<"posts" | "users">("posts");
   const debouncedInput = useDebounce(input, 300);
 
   // Sync router parameter on typing (debounced)
@@ -107,9 +110,9 @@ function SearchPage() {
     setInput(q);
   }, [q]);
 
-  const { data: posts, isLoading } = useQuery({
-    queryKey: ["search", q],
-    enabled: q.trim().length > 0,
+  const { data: posts, isLoading: postsLoading } = useQuery({
+    queryKey: ["search", "posts", q],
+    enabled: q.trim().length > 0 && activeTab === "posts",
     queryFn: async () => {
       const term = `%${q}%`;
       const { data } = await supabase
@@ -122,6 +125,23 @@ function SearchPage() {
       return (data ?? []) as unknown as PostCardData[];
     },
   });
+
+  const { data: users, isLoading: usersLoading } = useQuery({
+    queryKey: ["search", "users", q],
+    enabled: q.trim().length > 0 && activeTab === "users",
+    queryFn: async () => {
+      const term = `%${q}%`;
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, username, name, profession, avatar_url, is_verified, created_at")
+        .or(`name.ilike.${term},username.ilike.${term},profession.ilike.${term}`)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      return (data ?? []) as any[];
+    },
+  });
+
+  const isLoading = activeTab === "posts" ? postsLoading : usersLoading;
 
   return (
     <div className="container-narrow py-6 md:py-8">
@@ -137,15 +157,45 @@ function SearchPage() {
           autoFocus
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Search posts, titles, content…"
+          placeholder="Search posts, users, topics…"
           className="w-full px-4 py-3 rounded-md bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-primary text-sm transition-all"
         />
       </form>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-4 text-sm border-b border-border">
+        <button
+          onClick={() => setActiveTab("posts")}
+          className={
+            "inline-flex items-center gap-1.5 px-4 py-2 font-medium transition-colors border-b-2 -mb-px " +
+            (activeTab === "posts"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground")
+          }
+        >
+          <FileText className="w-4 h-4" />
+          Posts
+        </button>
+        <button
+          onClick={() => setActiveTab("users")}
+          className={
+            "inline-flex items-center gap-1.5 px-4 py-2 font-medium transition-colors border-b-2 -mb-px " +
+            (activeTab === "users"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground")
+          }
+        >
+          <Users className="w-4 h-4" />
+          Users
+        </button>
+      </div>
+
       {q && !isLoading && (
         <p className="text-xs text-muted-foreground mb-4">
           Results for "{q}"
         </p>
       )}
+
       {isLoading && (
         <div className="space-y-4">
           <PostCardSkeleton />
@@ -153,10 +203,55 @@ function SearchPage() {
           <PostCardSkeleton />
         </div>
       )}
-      {!isLoading && posts?.map((p) => <PostCard key={p.id} post={p} />)}
-      {!isLoading && posts && posts.length === 0 && q && (
+
+      {/* Posts results */}
+      {!isLoading && activeTab === "posts" && posts?.map((p) => <PostCard key={p.id} post={p} />)}
+      {!isLoading && activeTab === "posts" && posts && posts.length === 0 && q && (
         <p className="py-12 text-sm text-muted-foreground text-center">
-          No results found for "{q}". Try searching for something else.
+          No posts found for "{q}". Try searching for something else.
+        </p>
+      )}
+
+      {/* Users results */}
+      {!isLoading && activeTab === "users" && (
+        <div className="space-y-3">
+          {users?.map((user) => (
+            <Link
+              key={user.id}
+              to="/leader/$username"
+              params={{ username: user.username }}
+              className="block p-4 rounded-lg border border-border bg-card hover:bg-surface-2 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                {user.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="w-12 h-12 rounded-full bg-accent text-accent-foreground inline-flex items-center justify-center text-lg font-semibold">
+                    {user.name[0].toUpperCase()}
+                  </span>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold text-sm truncate">{user.name}</p>
+                    {user.is_verified && <VerifiedBadge size={14} />}
+                  </div>
+                  <p className="text-xs text-muted-foreground">@{user.username}</p>
+                  {user.profession && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{user.profession}</p>
+                  )}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+      {!isLoading && activeTab === "users" && users && users.length === 0 && q && (
+        <p className="py-12 text-sm text-muted-foreground text-center">
+          No users found for "{q}". Try searching for something else.
         </p>
       )}
     </div>
