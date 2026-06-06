@@ -9,12 +9,12 @@ import { getItemListSchema } from "@/lib/seo";
 import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({
-  sort: z.enum(["trending", "latest", "connected", "opportunities"]).optional(),
+  sort: z.enum(["connected", "public", "trending"]).optional(),
 });
 
 const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)";
 
-async function fetchFeed(sort: "trending" | "latest" | "connected" | "opportunities", userId?: string) {
+async function fetchFeed(sort: "connected" | "public" | "trending", userId?: string) {
   try {
     let q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
 
@@ -32,31 +32,42 @@ async function fetchFeed(sort: "trending" | "latest" | "connected" | "opportunit
           c.requester_id === userId ? c.receiver_id : c.requester_id
         );
         q = q.in("user_id", connectedUserIds);
+        // Order connected feed by created_at
+        const { data, error } = await q.order("created_at", { ascending: false });
+        if (error) {
+          console.error("[home] Failed to load connected feed:", error);
+          return [];
+        }
+        return data as unknown as PostCardData[];
       } else {
         // No connections, return empty
         return [];
       }
     }
 
-    // For "opportunities" feed, filter by is_opportunity
-    if (sort === "opportunities") {
-      q = q.eq("is_opportunity", true);
+    // For "public" feed, show all posts sorted by recent
+    if (sort === "public") {
+      const { data, error } = await q.order("created_at", { ascending: false });
+      if (error) {
+        console.error("[home] Failed to load public feed:", error);
+        return [];
+      }
+      return data as unknown as PostCardData[];
     }
 
-    // Order by YLS score for trending, or created_at for latest
-    const ordered =
-      sort === "latest" || sort === "connected"
-        ? q.order("created_at", { ascending: false })
-        : sort === "opportunities"
-        ? q.order("yls_score", { ascending: false }).order("created_at", { ascending: false })
-        : q.order("yls_score", { ascending: false }).order("created_at", { ascending: false });
-
-    const { data, error } = await ordered;
-    if (error) {
-      console.error("[home] Failed to load feed:", error);
-      return [];
+    // For "trending" feed, show high YLS score posts (opportunities + trending)
+    if (sort === "trending") {
+      const { data, error } = await q
+        .order("yls_score", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.error("[home] Failed to load trending feed:", error);
+        return [];
+      }
+      return data as unknown as PostCardData[];
     }
-    return data as unknown as PostCardData[];
+
+    return [];
   } catch (error) {
     console.error("[home] Feed request crashed:", error);
     return [];
@@ -86,7 +97,7 @@ async function fetchCategories() {
 export const Route = createFileRoute("/")({
   validateSearch: searchSchema,
   loaderDeps: ({ search: { sort } }) => ({ sort }),
-  loader: async ({ context: { queryClient, supabase }, deps: { sort = "trending" } }) => {
+  loader: async ({ context: { queryClient, supabase }, deps: { sort } }) => {
     // Get current user ID for connected feed (with error handling for SSR)
     let userId: string | undefined;
     try {
@@ -99,10 +110,14 @@ export const Route = createFileRoute("/")({
       userId = undefined;
     }
 
+    // Default: Connected if logged in, Public if not logged in
+    const defaultSort = userId ? "connected" : "public";
+    const actualSort = sort || defaultSort;
+
     await Promise.all([
       queryClient.ensureQueryData({
-        queryKey: ["posts", "feed", sort, userId],
-        queryFn: () => fetchFeed(sort, userId),
+        queryKey: ["posts", "feed", actualSort, userId],
+        queryFn: () => fetchFeed(actualSort, userId),
       }),
       queryClient.ensureQueryData({
         queryKey: ["categories"],
@@ -137,8 +152,11 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { sort = "trending" } = Route.useSearch();
   const { user } = useAuth();
+
+  // Default: Connected if logged in, Public if not logged in
+  const defaultSort = user ? "connected" : "public";
+  const { sort = defaultSort } = Route.useSearch();
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ["posts", "feed", sort, user?.id],
@@ -151,10 +169,11 @@ function HomePage() {
   });
 
   // Enhanced structured data for homepage feed
+  const feedName = sort === "trending" ? "Trending" : sort === "connected" ? "Connected" : "Public";
   const itemListSchema = posts && posts.length > 0 ? getItemListSchema({
-    name: sort === "trending" ? "Trending Posts" : "Latest Posts",
+    name: `${feedName} Posts`,
     url: "https://yespleaders.com/",
-    description: `${sort === "trending" ? "Trending" : "Latest"} posts from founders, developers, creators, and builders`,
+    description: `${feedName} posts from founders, developers, creators, and builders`,
     items: posts.slice(0, 10).map((post, index) => ({
       url: `https://yespleaders.com/post/${post.slug}`,
       name: post.title,
@@ -191,20 +210,17 @@ function HomePage() {
 
       <div>
         <div className="flex items-center gap-1 mb-2 text-sm flex-wrap">
-          <SortLink to="/" search={{ sort: "opportunities" }} active={sort === "opportunities"} icon={<Briefcase className="w-3.5 h-3.5" />}>
-            Opportunities
-          </SortLink>
-          <SortLink to="/" search={{ sort: "trending" }} active={sort === "trending"} icon={<Flame className="w-3.5 h-3.5" />}>
-            Trending
-          </SortLink>
-          <SortLink to="/" search={{ sort: "latest" }} active={sort === "latest"} icon={<Clock className="w-3.5 h-3.5" />}>
-            Latest
-          </SortLink>
           {user && (
             <SortLink to="/" search={{ sort: "connected" }} active={sort === "connected"} icon={<Users className="w-3.5 h-3.5" />}>
               Connected
             </SortLink>
           )}
+          <SortLink to="/" search={{ sort: "public" }} active={sort === "public"} icon={<Clock className="w-3.5 h-3.5" />}>
+            Public
+          </SortLink>
+          <SortLink to="/" search={{ sort: "trending" }} active={sort === "trending"} icon={<Flame className="w-3.5 h-3.5" />}>
+            Trending
+          </SortLink>
         </div>
 
         {isLoading && (
