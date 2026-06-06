@@ -54,5 +54,14 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       allowedHosts: ["leaders.yespstudio.com"],
     },
+    build: {
+      rollupOptions: {
+        external: ["@anthropic-ai/sdk"],
+      },
+    },
+    ssr: {
+      noExternal: [],
+      external: ["@anthropic-ai/sdk"],
+    },
   };
 });
