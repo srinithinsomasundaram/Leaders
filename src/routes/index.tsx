@@ -4,46 +4,19 @@ import { z } from "zod";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const supabase = supabaseClient as any;
 import { PostCard, type PostCardData } from "@/components/PostCard";
-import { Flame, Users, Compass } from "lucide-react";
+import { Flame, Compass } from "lucide-react";
 import { getItemListSchema } from "@/lib/seo";
 import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({
-  sort: z.enum(["connected", "explore", "trending"]).optional(),
+  sort: z.enum(["explore", "trending"]).optional(),
 });
 
 const POST_FIELDS = "id, slug, title, content, image_urls, tags, ai_summary, upvote_count, comment_count, created_at, profiles!inner(username, name, profession, avatar_url, is_verified), categories(name, slug)";
 
-async function fetchFeed(sort: "connected" | "explore" | "trending", userId?: string) {
+async function fetchFeed(sort: "explore" | "trending", userId?: string) {
   try {
     let q = supabase.from("posts").select(POST_FIELDS).eq("hidden", false).limit(30);
-
-    // For "connected" feed, filter by user's connections
-    if (sort === "connected" && userId) {
-      // Get user's connections
-      const { data: connections } = await supabase
-        .from("connections")
-        .select("requester_id, receiver_id")
-        .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
-        .eq("status", "accepted");
-
-      if (connections && connections.length > 0) {
-        const connectedUserIds = connections.map((c: any) =>
-          c.requester_id === userId ? c.receiver_id : c.requester_id
-        );
-        q = q.in("user_id", connectedUserIds);
-        // Order connected feed by created_at
-        const { data, error } = await q.order("created_at", { ascending: false });
-        if (error) {
-          console.error("[home] Failed to load connected feed:", error);
-          return [];
-        }
-        return data as unknown as PostCardData[];
-      } else {
-        // No connections, return empty
-        return [];
-      }
-    }
 
     // For "explore" feed, show all posts sorted by recent
     if (sort === "explore") {
@@ -118,9 +91,8 @@ export const Route = createFileRoute("/")({
       userId = undefined;
     }
 
-    // Default: Connected if logged in, Explore if not logged in
-    const defaultSort = userId ? "connected" : "explore";
-    const actualSort = sort || defaultSort;
+    // Default: Explore
+    const actualSort = sort || "explore";
 
     await Promise.all([
       queryClient.ensureQueryData({
@@ -162,9 +134,8 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   const { user } = useAuth();
 
-  // Default: Connected if logged in, Explore if not logged in
-  const defaultSort = user ? "connected" : "explore";
-  const { sort = defaultSort } = Route.useSearch();
+  // Default: Explore
+  const { sort = "explore" } = Route.useSearch();
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ["posts", "feed", sort, user?.id],
@@ -177,7 +148,7 @@ function HomePage() {
   });
 
   // Enhanced structured data for homepage feed
-  const feedName = sort === "trending" ? "Trending" : sort === "connected" ? "Connected" : "Explore";
+  const feedName = sort === "trending" ? "Trending" : "Explore";
   const itemListSchema = posts && posts.length > 0 ? getItemListSchema({
     name: `${feedName} Posts`,
     url: "https://yespleaders.com/",
@@ -218,11 +189,6 @@ function HomePage() {
 
       <div>
         <div className="flex items-center gap-1 mb-2 text-sm flex-wrap">
-          {user && (
-            <SortLink to="/" search={{ sort: "connected" }} active={sort === "connected"} icon={<Users className="w-3.5 h-3.5" />}>
-              Connected
-            </SortLink>
-          )}
           <SortLink to="/" search={{ sort: "explore" }} active={sort === "explore"} icon={<Compass className="w-3.5 h-3.5" />}>
             Explore
           </SortLink>

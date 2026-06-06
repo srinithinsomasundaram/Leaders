@@ -1,7 +1,6 @@
 // Service Worker for Yesp Leaders PWA
-const CACHE_NAME = 'yesp-leaders-v1';
+const CACHE_NAME = 'yesp-leaders-v2';
 const urlsToCache = [
-  '/',
   '/logo.svg',
   '/favicon.svg',
 ];
