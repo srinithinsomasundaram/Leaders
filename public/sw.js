@@ -10,8 +10,23 @@ const urlsToCache = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+      .then((cache) => {
+        // Try to cache URLs individually to avoid failing entire install
+        return Promise.allSettled(
+          urlsToCache.map(url =>
+            cache.add(url).catch(err => {
+              console.warn('Failed to cache:', url, err);
+              return null;
+            })
+          )
+        );
+      })
       .then(() => self.skipWaiting())
+      .catch((err) => {
+        console.error('Service worker install error:', err);
+        // Still skip waiting even if caching fails
+        return self.skipWaiting();
+      })
   );
 });
 
@@ -32,13 +47,39 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Skip caching for non-GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
         if (response) {
           return response;
         }
-        return fetch(event.request);
+
+        // Fetch from network
+        return fetch(event.request).then((response) => {
+          // Don't cache failed responses
+          if (!response || response.status !== 200 || response.type === 'error') {
+            return response;
+          }
+
+          // Only cache same-origin requests
+          if (event.request.url.startsWith(self.location.origin)) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+
+          return response;
+        }).catch((err) => {
+          console.warn('Fetch failed for:', event.request.url, err);
+          // Return offline fallback if needed
+          throw err;
+        });
       })
   );
 });
