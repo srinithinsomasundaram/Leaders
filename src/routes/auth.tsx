@@ -173,7 +173,7 @@ function AuthPage() {
         if (existing) throw new Error("Username is already taken.");
 
         await runSendingAnimation();
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -181,18 +181,31 @@ function AuthPage() {
             data: { username: cleanedUsername, full_name: name || email.split("@")[0] },
           },
         });
-        if (error) throw error;
+        if (error) {
+          console.error("Sign up error:", error);
+          console.error("Error details:", JSON.stringify(error, null, 2));
+          throw error;
+        }
+        console.log("Sign up successful:", data);
         toast.success("Check your email to confirm your account.");
         setEmailSent(true);
         setSending(false);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          console.error("Sign in error:", error);
+          console.error("Error details:", JSON.stringify(error, null, 2));
+          throw error;
+        }
+        console.log("Sign in successful:", data);
         toast.success("Welcome back!");
       }
     } catch (err) {
       setSending(false);
-      toast.error(err instanceof Error ? err.message : "Auth failed");
+      console.error("Auth error caught:", err);
+      const errorMessage = err instanceof Error ? err.message : "Auth failed";
+      console.error("Error message:", errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
